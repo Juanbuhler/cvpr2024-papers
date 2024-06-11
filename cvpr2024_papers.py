@@ -21,8 +21,11 @@ def load_data():
 
 df = load_data()
 
+st.sidebar.write("Select the number of clusters into which to split the data. Each cluster will have an overarching"
+                "theme computed from the list of its paper titles.")
 num_clusters = st.sidebar.slider("Number of clusters", min_value=10, max_value=100, step=10)
-
+st.sidebar.write("Then, click on different points on the plot to see what paper they correspond to, read the abstract,"
+                 "and go to the CVPR 2024 Open Acess paper page")
 themes_file = f"cluster_themes_{num_clusters}"
 
 with open(themes_file, 'rb') as f:
