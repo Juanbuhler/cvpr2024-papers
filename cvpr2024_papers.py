@@ -5,18 +5,12 @@ from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.events import Tap
 from bokeh.models import PanTool, WheelZoomTool
 from bokeh.palettes import Paired12, Spectral11, Set1, Set3, Category20, Accent
-from bokeh.transform import factor_cmap
 import pandas as pd
-from sklearn.cluster import KMeans
-import openai
 import pickle
-import os
-
-openai.api_key = "sk-proj-q1Ci5sUJGsDWQ7x6QpJQT3BlbkFJ4efzunU2K8YH2oaJ3LjA"
-
 
 st.set_page_config(layout='wide')
 spectral = np.hstack([Category20[20] + Set1[9] + Set3[9] + Accent[8] + Paired12 + Spectral11] * 100)
+
 
 # Read data from CSV into a pandas DataFrame
 @st.cache_data
