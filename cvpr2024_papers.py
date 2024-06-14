@@ -7,6 +7,10 @@ from bokeh.models import PanTool, WheelZoomTool
 from bokeh.palettes import Paired12, Spectral11, Set1, Set3, Category20, Accent
 import pandas as pd
 import pickle
+from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
+from sklearn.neighbors import NearestNeighbors
+
 
 st.set_page_config(layout='wide')
 spectral = np.hstack([Category20[20] + Set1[9] + Set3[9] + Accent[8] + Paired12 + Spectral11] * 100)
@@ -16,16 +20,24 @@ spectral = np.hstack([Category20[20] + Set1[9] + Set3[9] + Accent[8] + Paired12 
 @st.cache_data
 def load_data():
     df = pd.read_csv("cvpr2024_data.csv")
-    return df
+    sentence_embeddings = np.load("cvpr2024_papers_points.npy")
+    return df, sentence_embeddings
+
+@st.cache_resource
+def get_model():
+    return SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 
 
-df = load_data()
+df, sentence_embeddings = load_data()
 
 st.sidebar.write("Select the number of clusters into which to split the data. Each cluster will have an overarching"
                 "theme computed from the list of its paper titles.")
 num_clusters = st.sidebar.slider("Number of clusters", min_value=10, max_value=100, step=10)
 st.sidebar.write("Then, click on different points on the plot to see what paper they correspond to, read the abstract,"
                  "and go to the CVPR 2024 Open Acess paper page")
+
+num_results = st.sidebar.slider("Number of search results to show", min_value=5, max_value=100, step=1)
+
 themes_file = f"cluster_themes_{num_clusters}"
 
 with open(themes_file, 'rb') as f:
@@ -33,10 +45,37 @@ with open(themes_file, 'rb') as f:
 
 themes_list = [themes[i] for i in cluster_indices]
 
-# Create a ColumnDataSource
+# Streamlit app layout
+
+st.title("CVPR 2024 Papers")
+
 palette = spectral
 color = [palette[i] for i in cluster_indices]
+size = [5] * len(color)
+alpha = [1] * len(color)
+
+query = st.text_input("Natural Language Search")
+
+indices = []
+if query:
+    model = get_model()
+    embedded_query = model.encode([query])[0]
+    nn_model = NearestNeighbors(n_neighbors=num_results, algorithm='auto', metric='cosine')
+    nn_model.fit(sentence_embeddings)
+
+    distances, indices = nn_model.kneighbors(embedded_query.reshape(1, -1), n_neighbors=num_results)
+    indices = indices[0]
+    # Highlight search results
+    alpha = [0.5] * len(color)
+    for i in indices:
+        color[i] = "#FFFFFF"
+        size[i] = 10
+        alpha[i] = 1
+
+# Create a ColumnDataSource
 df['Color'] = color
+df['Size'] = size
+df['Alpha'] = alpha
 df['Theme'] = themes_list
 
 source = ColumnDataSource(df)
@@ -44,13 +83,12 @@ source = ColumnDataSource(df)
 # Create a Bokeh plot with dark grey background and black points
 p = figure(tools="tap,pan,wheel_zoom,reset", tooltips="@Title", width=700, height=700,
            background_fill_color='#333333', border_fill_color='#333333')
-p.scatter('X', 'Y', source=source, size=10, color="Color",
+p.scatter('X', 'Y', source=source, size="Size", color="Color", alpha="Alpha",
           nonselection_fill_alpha=0.75, selection_fill_color='#FFFFFF')
 
 # Customize grid lines
 p.xgrid.grid_line_color = '#222222'
 p.ygrid.grid_line_color = '#222222'
-
 
 # JavaScript code to display text and URL on tap
 callback = CustomJS(args=dict(source=source), code="""
@@ -72,9 +110,8 @@ callback = CustomJS(args=dict(source=source), code="""
 
 p.js_on_event(Tap, callback)
 
-# Streamlit app layout
 
-st.title("CVPR 2024 Papers")
+
 
 cols = st.columns(2)
 
