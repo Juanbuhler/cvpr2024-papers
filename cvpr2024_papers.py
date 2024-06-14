@@ -7,7 +7,6 @@ from bokeh.models import PanTool, WheelZoomTool
 from bokeh.palettes import Paired12, Spectral11, Set1, Set3, Category20, Accent
 import pandas as pd
 import pickle
-from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 
