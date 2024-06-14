@@ -23,8 +23,11 @@ def load_data():
     return df, sentence_embeddings
 
 @st.cache_resource
-def get_model():
-    return SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+def get_models():
+    sentence_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    nn_model = NearestNeighbors(n_neighbors=num_results, algorithm='auto', metric='cosine')
+    nn_model.fit(sentence_embeddings)
+    return sentence_model, nn_model
 
 
 df, sentence_embeddings = load_data()
@@ -57,10 +60,8 @@ query = st.text_input("Natural Language Search")
 
 indices = []
 if query:
-    model = get_model()
-    embedded_query = model.encode([query])[0]
-    nn_model = NearestNeighbors(n_neighbors=num_results, algorithm='auto', metric='cosine')
-    nn_model.fit(sentence_embeddings)
+    sentence_model, nn_model = get_models()
+    embedded_query = sentence_model.encode([query])[0]
 
     distances, indices = nn_model.kneighbors(embedded_query.reshape(1, -1), n_neighbors=num_results)
     indices = indices[0]
